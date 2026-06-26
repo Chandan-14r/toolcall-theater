@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  agent-platform:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./sandbox:/app/sandbox
+    environment:
+      - PORT=8080
+      - PROVIDER=${PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+    restart: unless-stopped

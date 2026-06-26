@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+    <meta name="description" content="A premium 3D observability console for autonomous multi-agent systems." />
+    <title>Agent Commander — Autonomous AI Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Background Space & Mesh Aurora Grid -->
+    <div class="mesh-bg"></div>
+
+    <main class="console-layout">
+      <!-- 1. Left Navigation Rail -->
+      <aside class="sidebar-rail">
+        <div class="brand">
+          <span class="logo-icon">⏣</span>
+          <div class="brand-text">
+            <h2>commander</h2>
+            <p>autonomous ops</p>
+          </div>
+        </div>
+        
+        <nav class="nav-links" aria-label="System Navigation">
+          <button class="nav-btn active" data-tab="live">
+            <span class="btn-icon">⚡</span> Live Console
+          </button>
+          <button class="nav-btn" data-tab="agents">
+            <span class="btn-icon">🤖</span> Agent Roles
+          </button>
+          <button class="nav-btn" data-tab="tools">
+            <span class="btn-icon">🛠️</span> Tool Registry
+          </button>
+          <button class="nav-btn" data-tab="memory">
+            <span class="btn-icon">🧠</span> Memory & VSM
+          </button>
+          <button class="nav-btn" data-tab="settings">
+            <span class="btn-icon">⚙️</span> Configuration
+          </button>
+        </nav>
+
+        <div class="rail-footer-status">
+          <div class="footer-status-label">
+            <span class="pulse-green"></span> Database Connection
+          </div>
+          <small>SQLite relational active</small>
+        </div>
+      </aside>
+
+      <!-- 2. Right Working Workspace Area -->
+      <section class="stage-container">
+        
+        <!-- Tab Content: Live Console -->
+        <div id="tab-content-live" class="tab-content-pane">
+          <!-- Top Status & Hero Information Bar -->
+          <header class="console-header">
+            <div class="header-main">
+              <span class="eyebrow" id="scenario-eyebrow">Task Deployment</span>
+              <h1 id="scenario-title">Ready to Launch</h1>
+              <div class="scenario-prompt-box">
+                <span class="prompt-label">Active Prompt:</span>
+                <p id="scenario-prompt">Select an agent scenario to start execution.</p>
+              </div>
+            </div>
+
+            <div class="header-status-card">
+              <div class="status-indicator">
+                <span id="status-dot" class="dot-idle"></span>
+                <span id="status-text">Ready</span>
+              </div>
+              <div class="header-timer">
+                <span class="timer-label">Running Timer:</span>
+                <span id="elapsed-timer">00:00.0s</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- System Stats Hub -->
+          <section class="stats-hub" aria-label="Live run statistics">
+            <div class="stat-bubble">
+              <span class="stat-icon">📑</span>
+              <div class="stat-info">
+                <b id="metric-events">0</b>
+                <span>Run Events</span>
+              </div>
+            </div>
+            <div class="stat-bubble">
+              <span class="stat-icon">🔧</span>
+              <div class="stat-info">
+                <b id="metric-tools">0</b>
+                <span>Tool Executions</span>
+              </div>
+            </div>
+            <div class="stat-bubble">
+              <span class="stat-icon">⏳</span>
+              <div class="stat-info">
+                <b id="metric-latency">0ms</b>
+                <span>Session Duration</span>
+              </div>
+            </div>
+            <div class="stat-bubble">
+              <span class="stat-icon">🔑</span>
+              <div class="stat-info">
+                <b id="provider-badge">gemini-2.5</b>
+                <span>Active Provider</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Active Agents Display -->
+          <section class="agent-avatar-row" aria-label="System Agents">
+            <div class="agent-avatar-card" id="avatar-coordinator">
+              <div class="avatar-icon">🛡️</div>
+              <div>
+                <h4>Coordinator</h4>
+                <p>Planning & Routing</p>
+              </div>
+            </div>
+            <div class="agent-avatar-card" id="avatar-researcher">
+              <div class="avatar-icon">🔍</div>
+              <div>
+                <h4>Researcher</h4>
+                <p>Alice — Web & Files</p>
+              </div>
+            </div>
+            <div class="agent-avatar-card" id="avatar-programmer">
+              <div class="avatar-icon">💻</div>
+              <div>
+                <h4>Programmer</h4>
+                <p>Bob — Python & Shell</p>
+              </div>
+            </div>
+            <div class="agent-avatar-card" id="avatar-reviewer">
+              <div class="avatar-icon">✨</div>
+              <div>
+                <h4>Reviewer</h4>
+                <p>Charlie — Verification</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Main Screen Layout Columns -->
+          <div class="screen-grid">
+            
+            <!-- Central Operations Stage -->
+            <div class="operations-stage">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span class="panel-icon">📺</span>
+                  <div>
+                    <h3>Command Stage</h3>
+                    <p>Holographic 3D Node Map & Live Timeline</p>
+                  </div>
+                </div>
+                <div class="stage-toggles">
+                  <button id="toggle-3d-btn" class="toggle-btn active">3D Hologram</button>
+                  <button id="toggle-list-btn" class="toggle-btn">Timeline</button>
+                </div>
+              </div>
+
+              <!-- View 1: 3D Hologram Scene Canvas -->
+              <div id="three-container" class="three-container">
+                <div class="loader-message">Initializing 3D neural core...</div>
+              </div>
+
+              <!-- View 2: Live Trace Event Cards List (Scrollable) -->
+              <div id="trace-scroll-area" class="trace-scroll-area hidden">
+                <div id="trace" class="trace-timeline-list" aria-live="polite"></div>
+              </div>
+
+              <!-- Dashboard Controls -->
+              <div class="stage-controls">
+                <button id="play" class="btn primary-btn">Launch Run <span class="arrow">→</span></button>
+                <button id="step" class="btn secondary-btn">Execute Step</button>
+                <button id="restart" class="btn text-btn">Reset</button>
+                <button id="export" class="btn text-btn export-btn">Export Run JSON ↗</button>
+              </div>
+            </div>
+
+            <!-- Progressive Inspector Side Panel -->
+            <aside class="details-inspector">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span class="panel-icon">👁️</span>
+                  <div>
+                    <h3 id="inspect-title">Telemetry Inspector</h3>
+                    <p>Real-time event parameters and outputs</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="inspector-content">
+                <p id="inspect-copy" class="empty-inspector-text">
+                  Select any event from the timeline or start a run to inspect agent reasoning, tool data, and outputs.
+                </p>
+                <div id="inspect-details" class="inspect-details-wrapper"></div>
+              </div>
+            </aside>
+
+          </div>
+
+          <!-- 3. SQLite Database Stats Dock (Bottom Panel) -->
+          <footer class="database-stats-dock">
+            <div class="dock-header">
+              <h3><span class="dock-icon">📊</span> Relational Database Performance (SQLite & VSM)</h3>
+              <span class="dock-badge">Active Connection</span>
+            </div>
+            <div class="dock-grid">
+              <div class="dock-card">
+                <h4>System Sessions</h4>
+                <div class="dock-stat-row"><span>Total Sessions:</span> <b id="stat-sessions">0</b></div>
+                <div class="dock-stat-row"><span>Succeeded Runs:</span> <b id="stat-succeeded">0</b></div>
+                <div class="dock-stat-row"><span>Failed Runs:</span> <b id="stat-failed">0</b></div>
+                <div class="dock-stat-row"><span>Semantic Records:</span> <b id="stat-memories">0</b></div>
+              </div>
+              <div class="dock-card">
+                <h4>Tool Success Rates</h4>
+                <div id="stat-tools-list" class="stat-tools-list">
+                  <p class="empty-dock-text">No tools executed in this session.</p>
+                </div>
+              </div>
+            </div>
+          </footer>
+        </div>
+
+        <!-- Tab Content: Agents -->
+        <div id="tab-content-agents" class="tab-content-pane hidden">
+          <div class="subpage-container">
+            <div class="subpage-header">
+              <h2>🤖 Specialized Agent Roles</h2>
+              <p>The platform assigns tasks to specialized roles with strict tool execution limits and capabilities.</p>
+            </div>
+            <div class="subpage-grid">
+              <div class="info-card">
+                <h3>🛡️ Coordinator</h3>
+                <p>Decomposes user tasks into plan steps. Schedules handoffs between roles and triggers rework loops if verification fails.</p>
+              </div>
+              <div class="info-card">
+                <h3>🔍 Researcher (Alice)</h3>
+                <p>Focuses on information retrieval. Utilizes <code>websearch</code> and <code>browser</code> tools. Restricted to read-only filesystem scopes.</p>
+              </div>
+              <div class="info-card">
+                <h3>💻 Programmer (Bob)</h3>
+                <p>Responsible for writing, updating, and executing code. Utilizes <code>filesystem</code>, <code>shell</code>, and <code>python</code> sandboxes.</p>
+              </div>
+              <div class="info-card">
+                <h3>✨ Reviewer (Charlie)</h3>
+                <p>Validates outcomes. Run checks on code changes, runs tests via shell scripts, and evaluates final results against the brief.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Tools -->
+        <div id="tab-content-tools" class="tab-content-pane hidden">
+          <div class="subpage-container">
+            <div class="subpage-header">
+              <h2>🛠️ Sandboxed Tool Registry</h2>
+              <p>Tools are executed inside restricted environments to prevent path traversals and unauthorized access.</p>
+            </div>
+            <div class="subpage-grid">
+              <div class="info-card">
+                <h3>🌐 Web Search (Tavily)</h3>
+                <p>Retrieves high-quality pages from the live web. Requires <code>TAVILY_API_KEY</code>.</p>
+              </div>
+              <div class="info-card">
+                <h3>🦊 Browser (Playwright)</h3>
+                <p>Automates chromium instances, performs user interaction simulations (clicking, filling forms), and captures step screenshots.</p>
+              </div>
+              <div class="info-card">
+                <h3>📁 FileSystem Sandbox</h3>
+                <p>Grants read and write operations restricted strictly inside the local <code>sandbox/</code> directory.</p>
+              </div>
+              <div class="info-card">
+                <h3>🐍 Python Sandbox</h3>
+                <p>Evaluates mathematical operations and data processing scripts in an isolated subprocess.</p>
+              </div>
+              <div class="info-card">
+                <h3>🐚 Shell Executor</h3>
+                <p>Runs command line processes inside the project's sandboxed root folder.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Memory -->
+        <div id="tab-content-memory" class="tab-content-pane hidden">
+          <div class="subpage-container">
+            <div class="subpage-header">
+              <h2>🧠 Hybrid Persistent Memory</h2>
+              <p>The platform implements two complementary memory architectures for ultimate durability and semantic recall.</p>
+            </div>
+            <div class="subpage-grid">
+              <div class="info-card">
+                <h3>📊 SQLite Relational Schema</h3>
+                <p>Stores structured run histories, agent step logs, tool invocations, durations, and outputs with full foreign key constraints and cascade delete operations.</p>
+              </div>
+              <div class="info-card">
+                <h3>🌐 Vector Space Model (VSM)</h3>
+                <p>A zero-dependency TF-IDF vector database. Indexes planned tasks and their outcomes. Performs cosine similarity queries during Coordinator planning to recall past matching sessions.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Settings -->
+        <div id="tab-content-settings" class="tab-content-pane hidden">
+          <div class="subpage-container">
+            <div class="subpage-header">
+              <h2>⚙️ Platform & Provider Configurations</h2>
+              <p>Adjust environment credentials and select language model providers.</p>
+            </div>
+            <div class="info-card">
+              <h3>Active System Configuration</h3>
+              <div class="dock-stat-row" style="margin-top: 10px;"><span>LLM Provider:</span> <b id="settings-provider">gemini</b></div>
+              <div class="dock-stat-row"><span>Request Timeout:</span> <b id="settings-timeout">60000ms</b></div>
+              <div class="dock-stat-row"><span>Web Search API:</span> <b id="settings-search">Tavily Search active</b></div>
+              <div class="dock-stat-row"><span>Database Name:</span> <code>data/memory.db</code></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Templates -->
+    <template id="event-template">
+      <button class="timeline-event-card">
+        <div class="card-glow"></div>
+        <div class="card-left">
+          <span class="event-icon"></span>
+          <span class="timeline-thread-line"></span>
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <strong class="event-title"></strong>
+            <span class="event-time"></span>
+          </div>
+          <p class="event-detail"></p>
+        </div>
+      </button>
+    </template>
+
+    <!-- Scripts -->
+    <script src="three.min.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
