@@ -11,7 +11,8 @@ export class GeminiAdapter extends ProviderAdapter {
     this.client = new OpenAI({
       apiKey: this.config.apiKey,
       baseURL: this.config.baseUrl || "https://generativelanguage.googleapis.com/v1beta/openai/",
-      timeout: this.config.timeout
+      timeout: this.config.timeout,
+      maxRetries: 0
     });
     this.lastRequestTime = 0;
   }
@@ -28,8 +29,8 @@ export class GeminiAdapter extends ProviderAdapter {
     const maxRetries = 5;
     const retryableStatuses = [429, 500, 502, 503, 504];
 
-    // Enforce rate-limit pacing (2000ms between requests)
-    const minInterval = 2000;
+    // Enforce rate-limit pacing (4000ms minimum between requests)
+    const minInterval = 4000;
     const elapsedSinceLast = Date.now() - this.lastRequestTime;
     if (elapsedSinceLast < minInterval) {
       const waitMs = minInterval - elapsedSinceLast;
@@ -65,7 +66,8 @@ export class GeminiAdapter extends ProviderAdapter {
           err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
 
         if (isRetryable && attempt < maxRetries) {
-          const delayMs = Math.min(2000 * Math.pow(2, attempt - 1), 16000);
+          // Generous backoff for rate limit recovery
+          const delayMs = Math.min(3000 * Math.pow(2, attempt - 1), 24000);
           console.warn(`Gemini API error (${err.status || err.code}), retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
           await new Promise(r => setTimeout(r, delayMs));
           this.lastRequestTime = Date.now();
