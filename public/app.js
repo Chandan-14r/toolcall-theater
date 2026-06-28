@@ -1,4 +1,4 @@
-import { initThreeScene, highlightNode } from './three-scene.js';
+import { initThreeScene, highlightNode, initRobotScene, initHologramScene } from './three-scene.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let scenarios = [];
@@ -628,12 +628,22 @@ async function init() {
   // 4. Fetch stats
   fetchStats();
 
-  // 5. Init Three.js scene
+  // 5. Init Three.js scenes
   setTimeout(() => {
     try {
       initThreeScene('three-container');
     } catch (err) {
-      console.warn('Three.js init failed:', err);
+      console.warn('Three.js core scene init failed:', err);
+    }
+    try {
+      initRobotScene('robot-canvas-container');
+    } catch (err) {
+      console.warn('Three.js robot scene init failed:', err);
+    }
+    try {
+      initHologramScene('hologram-container');
+    } catch (err) {
+      console.warn('Three.js hologram scene init failed:', err);
     }
   }, 100);
 
@@ -648,10 +658,15 @@ async function init() {
       const allPanes = ['tab-content-live', 'tab-content-agents', 'tab-content-tools', 'tab-content-memory', 'tab-content-settings'];
       allPanes.forEach((id) => {
         const pane = document.querySelector(`#${id}`);
-        if (pane) pane.style.display = 'none';
+        if (pane) {
+          pane.classList.add('hidden');
+          pane.style.display = ''; // Reset display style
+        }
       });
       const activePane = document.querySelector(`#tab-content-${tab}`);
-      if (activePane) activePane.style.display = '';
+      if (activePane) {
+        activePane.classList.remove('hidden');
+      }
     });
   });
 
@@ -663,16 +678,26 @@ async function init() {
 
   if (btn3D) {
     btn3D.addEventListener('click', () => {
-      if (threeContainer) threeContainer.style.display = '';
-      if (timelineScroll) timelineScroll.style.display = 'none';
+      if (threeContainer) {
+        threeContainer.classList.remove('hidden');
+        threeContainer.style.display = ''; // Clear inline styles
+      }
+      if (timelineScroll) {
+        timelineScroll.classList.add('hidden');
+      }
       btn3D.classList.add('active');
       if (btnList) btnList.classList.remove('active');
     });
   }
   if (btnList) {
     btnList.addEventListener('click', () => {
-      if (threeContainer) threeContainer.style.display = 'none';
-      if (timelineScroll) timelineScroll.style.display = '';
+      if (threeContainer) {
+        threeContainer.classList.add('hidden');
+      }
+      if (timelineScroll) {
+        timelineScroll.classList.remove('hidden');
+        timelineScroll.style.display = ''; // Clear inline styles
+      }
       btnList.classList.add('active');
       if (btn3D) btn3D.classList.remove('active');
     });

@@ -13,6 +13,7 @@ export class GeminiAdapter extends ProviderAdapter {
       baseURL: this.config.baseUrl || "https://generativelanguage.googleapis.com/v1beta/openai/",
       timeout: this.config.timeout
     });
+    this.lastRequestTime = 0;
   }
 
   static get capabilities() {
@@ -24,32 +25,58 @@ export class GeminiAdapter extends ProviderAdapter {
   }
 
   async chat(messages, options = {}) {
-    const startTime = Date.now();
-    try {
-      const response = await this.client.chat.completions.create({
-        model: options.model || this.config.model,
-        messages,
-        tools: options.tools || undefined,
-        response_format: options.responseFormat || undefined,
-        temperature: options.temperature ?? 0.7
-      });
+    const maxRetries = 5;
+    const retryableStatuses = [429, 500, 502, 503, 504];
 
-      const latency = Date.now() - startTime;
-      return {
-        content: response.choices[0]?.message?.content || "",
-        toolCalls: response.choices[0]?.message?.tool_calls || [],
-        usage: {
-          promptTokens: response.usage?.prompt_tokens || 0,
-          completionTokens: response.usage?.completion_tokens || 0,
-          totalTokens: response.usage?.total_tokens || 0
-        },
-        latency
-      };
-    } catch (err) {
-      if (err.status === 429) {
-        throw new RateLimitError("Gemini", err.message);
+    // Enforce rate-limit pacing (2000ms between requests)
+    const minInterval = 2000;
+    const elapsedSinceLast = Date.now() - this.lastRequestTime;
+    if (elapsedSinceLast < minInterval) {
+      const waitMs = minInterval - elapsedSinceLast;
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+    this.lastRequestTime = Date.now();
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const startTime = Date.now();
+      try {
+        const response = await this.client.chat.completions.create({
+          model: options.model || this.config.model,
+          messages,
+          tools: options.tools || undefined,
+          response_format: options.responseFormat || undefined,
+          temperature: options.temperature ?? 0.7
+        });
+
+        this.lastRequestTime = Date.now();
+        const latency = Date.now() - startTime;
+        return {
+          content: response.choices[0]?.message?.content || "",
+          toolCalls: response.choices[0]?.message?.tool_calls || [],
+          usage: {
+            promptTokens: response.usage?.prompt_tokens || 0,
+            completionTokens: response.usage?.completion_tokens || 0,
+            totalTokens: response.usage?.total_tokens || 0
+          },
+          latency
+        };
+      } catch (err) {
+        const isRetryable = retryableStatuses.includes(err.status) ||
+          err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
+
+        if (isRetryable && attempt < maxRetries) {
+          const delayMs = Math.min(2000 * Math.pow(2, attempt - 1), 16000);
+          console.warn(`Gemini API error (${err.status || err.code}), retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
+          await new Promise(r => setTimeout(r, delayMs));
+          this.lastRequestTime = Date.now();
+          continue;
+        }
+
+        if (err.status === 429) {
+          throw new RateLimitError("Gemini", err.message);
+        }
+        throw err;
       }
-      throw err;
     }
   }
 

@@ -462,23 +462,13 @@ pre, code { font-family: var(--font-mono); }
   animation: float 5s ease-in-out infinite;
 }
 
-.agent-chat-card .agent-chat-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-violet), var(--accent-pink));
-  margin-bottom: 10px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-}
-
-.agent-chat-card .agent-chat-avatar img {
+.robot-canvas-container {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 110px;
+  margin-bottom: 8px;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .agent-chat-card .agent-chat-bubble {
@@ -1082,42 +1072,104 @@ pre, code { font-family: var(--font-mono); }
   margin-top: 8px;
 }
 
-.dock-card.tool-breakdown .tool-list-item {
+.dock-tool-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.dock-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.tool-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 0.68rem;
 }
 
-.dock-card.tool-breakdown .tool-list-item .tool-name {
+.tool-card-name {
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  font-weight: 500;
 }
 
-.dock-card.tool-breakdown .tool-list-item .tool-count {
-  color: var(--text-muted);
+.tool-card-count {
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-weight: 600;
 }
 
+.tool-card-avg {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  margin-left: auto;
+}
+
+.donut-chart-wrap {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .donut-chart {
-  width: 48px;
-  height: 48px;
-  margin-top: 6px;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
 }
 
 .donut-chart circle {
   fill: none;
-  stroke-width: 4;
+  stroke-width: 6;
   stroke-linecap: round;
 }
 
-.donut-chart .donut-track {
+.donut-bg {
   stroke: rgba(255, 255, 255, 0.05);
 }
 
-.donut-chart .donut-segment {
-  transition: stroke-dasharray 0.6s var(--ease-out);
+.donut-fill {
+  stroke: var(--accent-green);
+  transition: stroke-dashoffset 0.6s var(--ease-out);
+}
+
+.donut-label {
+  position: absolute;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.donut-sublabel {
+  display: none;
+}
+
+/* Hologram Card */
+.hologram-card {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 4px !important;
+  background: rgba(10, 14, 26, 0.4) !important;
+  border-style: dashed !important;
+}
+
+.hologram-container {
+  width: 100%;
+  height: 70px;
+  position: relative;
 }
 
 /* ============================================================

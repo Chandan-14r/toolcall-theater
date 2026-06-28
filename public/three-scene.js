@@ -299,3 +299,284 @@ export function highlightNode(nodeName) {
     }, 1500);
   }
 }
+
+// Cute Floating 3D Robot Agent Scene
+export function initRobotScene(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const scene = new THREE.Scene();
+  const width = container.clientWidth || 80;
+  const height = container.clientHeight || 80;
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  camera.position.set(0, 0, 4.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.innerHTML = "";
+  container.appendChild(renderer.domElement);
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0x1e1b4b, 1.8);
+  scene.add(ambient);
+
+  const pointLight = new THREE.PointLight(0x06b6d4, 4, 10);
+  pointLight.position.set(0, 1.5, 1);
+  scene.add(pointLight);
+
+  const ringLight = new THREE.PointLight(0xec4899, 3, 5);
+  ringLight.position.set(0, -1.2, 0.5);
+  scene.add(ringLight);
+
+  const robotGroup = new THREE.Group();
+  scene.add(robotGroup);
+
+  // Platform Disk
+  const platformGeo = new THREE.CylinderGeometry(1.0, 1.1, 0.1, 32);
+  const platformMat = new THREE.MeshPhongMaterial({
+    color: 0x1f2937,
+    emissive: 0x111827,
+    shininess: 80,
+    specular: 0x374151
+  });
+  const platform = new THREE.Mesh(platformGeo, platformMat);
+  platform.position.y = -1.2;
+  scene.add(platform);
+
+  // Glowing Platform Ring
+  const ringGeo = new THREE.RingGeometry(1.02, 1.06, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xec4899,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.8
+  });
+  const platformRing = new THREE.Mesh(ringGeo, ringMat);
+  platformRing.rotation.x = Math.PI / 2;
+  platformRing.position.y = -1.14;
+  scene.add(platformRing);
+
+  // Robot Head
+  const headGeo = new THREE.SphereGeometry(0.55, 32, 32);
+  const headMat = new THREE.MeshPhongMaterial({
+    color: 0xe2e8f0,
+    shininess: 100,
+    specular: 0xffffff
+  });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 0.35;
+  robotGroup.add(head);
+
+  // Face Screen / Visor
+  const visorGeo = new THREE.SphereGeometry(0.56, 32, 32, 0, Math.PI * 2, 0.3, Math.PI * 0.4);
+  const visorMat = new THREE.MeshPhongMaterial({
+    color: 0x0f172a,
+    shininess: 150
+  });
+  const visor = new THREE.Mesh(visorGeo, visorMat);
+  visor.position.y = 0.35;
+  visor.rotation.x = 0.1;
+  robotGroup.add(visor);
+
+  // Glowing Cyan Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+  
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.18, 0.35, 0.48);
+  robotGroup.add(eyeL);
+
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeR.position.set(0.18, 0.35, 0.48);
+  robotGroup.add(eyeR);
+
+  // Ears / Antenna Joints
+  const earGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.15, 16);
+  const earMat = new THREE.MeshPhongMaterial({ color: 0x475569 });
+  
+  const earL = new THREE.Mesh(earGeo, earMat);
+  earL.position.set(-0.6, 0.35, 0);
+  earL.rotation.z = Math.PI / 2;
+  robotGroup.add(earL);
+
+  const earR = earL.clone();
+  earR.position.x = 0.6;
+  robotGroup.add(earR);
+
+  // Robot Body
+  const bodyGeo = new THREE.CylinderGeometry(0.38, 0.45, 0.6, 32);
+  const bodyMat = new THREE.MeshPhongMaterial({
+    color: 0x0f172a,
+    shininess: 90,
+    specular: 0x3b82f6
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = -0.3;
+  robotGroup.add(body);
+
+  // Chest screen
+  const screenGeo = new THREE.PlaneGeometry(0.35, 0.22);
+  const screenMat = new THREE.MeshBasicMaterial({
+    color: 0x3b82f6,
+    transparent: true,
+    opacity: 0.7
+  });
+  const screen = new THREE.Mesh(screenGeo, screenMat);
+  screen.position.set(0, -0.25, 0.42);
+  robotGroup.add(screen);
+
+  // Float Particles
+  const particleGeo = new THREE.BufferGeometry();
+  const particleCount = 20;
+  const positions = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount * 3; i += 3) {
+    positions[i] = (Math.random() - 0.5) * 1.5;
+    positions[i + 1] = -1.1 + Math.random() * 2.0;
+    positions[i + 2] = (Math.random() - 0.5) * 1.5;
+  }
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particleMat = new THREE.PointsMaterial({
+    color: 0x00f0ff,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.6
+  });
+  const particles = new THREE.Points(particleGeo, particleMat);
+  scene.add(particles);
+
+  // Render Loop
+  const clock = new THREE.Clock();
+  function draw() {
+    requestAnimationFrame(draw);
+    const elapsed = clock.getElapsedTime();
+
+    // Floating and rotating
+    robotGroup.position.y = Math.sin(elapsed * 1.5) * 0.12;
+    robotGroup.rotation.y = Math.sin(elapsed * 0.5) * 0.15;
+    robotGroup.rotation.x = Math.cos(elapsed * 0.4) * 0.05;
+
+    // Blinking logic
+    if (Math.floor(elapsed) % 4 === 0 && (elapsed % 1) < 0.15) {
+      eyeL.scale.y = 0.1;
+      eyeR.scale.y = 0.1;
+    } else {
+      eyeL.scale.y = 1;
+      eyeR.scale.y = 1;
+    }
+
+    // Particle drift
+    const pos = particles.geometry.attributes.position.array;
+    for (let i = 1; i < pos.length; i += 3) {
+      pos[i] += 0.015; // float up
+      if (pos[i] > 1.2) {
+        pos[i] = -1.1; // reset to bottom
+        pos[i - 1] = (Math.random() - 0.5) * 1.5;
+      }
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+
+    renderer.render(scene, camera);
+  }
+  draw();
+
+  window.addEventListener("resize", () => {
+    if (!container || !renderer) return;
+    const w = container.clientWidth || 80;
+    const h = container.clientHeight || 80;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+}
+
+// 3D Holographic Rotating Neon Cube
+export function initHologramScene(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const scene = new THREE.Scene();
+  const width = container.clientWidth || 80;
+  const height = container.clientHeight || 80;
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  camera.position.z = 3.5;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.innerHTML = "";
+  container.appendChild(renderer.domElement);
+
+  // Outer Neon Box
+  const outerGeo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
+  const outerMat = new THREE.MeshBasicMaterial({
+    color: 0x00f0ff,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.7
+  });
+  const outerBox = new THREE.Mesh(outerGeo, outerMat);
+  scene.add(outerBox);
+
+  // Inner Neon Box
+  const innerGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  const innerMat = new THREE.MeshBasicMaterial({
+    color: 0xec4899,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.9
+  });
+  const innerBox = new THREE.Mesh(innerGeo, innerMat);
+  scene.add(innerBox);
+
+  // Particle cloud
+  const count = 30;
+  const geom = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i += 3) {
+    const r = 1.0;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    pos[i] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i + 2] = r * Math.cos(phi);
+  }
+  geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0x3b82f6,
+    size: 0.04,
+    transparent: true,
+    opacity: 0.8
+  });
+  const particles = new THREE.Points(geom, mat);
+  scene.add(particles);
+
+  const clock = new THREE.Clock();
+  function draw() {
+    requestAnimationFrame(draw);
+    const elapsed = clock.getElapsedTime();
+
+    outerBox.rotation.y = elapsed * 0.25;
+    outerBox.rotation.x = elapsed * 0.15;
+    outerBox.position.y = Math.sin(elapsed * 1.5) * 0.05;
+
+    innerBox.rotation.y = -elapsed * 0.4;
+    innerBox.rotation.z = elapsed * 0.2;
+    innerBox.position.y = Math.sin(elapsed * 1.5) * 0.05;
+
+    particles.rotation.y = elapsed * 0.08;
+
+    renderer.render(scene, camera);
+  }
+  draw();
+
+  window.addEventListener("resize", () => {
+    if (!container || !renderer) return;
+    const w = container.clientWidth || 80;
+    const h = container.clientHeight || 80;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+}
+

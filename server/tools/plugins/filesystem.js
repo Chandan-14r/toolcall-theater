@@ -31,20 +31,31 @@ export class FileSystemTool extends Tool {
   }
 
   async run(input, context = {}) {
+    const targetPath = input.filePath || input.path;
+    if (!targetPath) {
+      throw new Error("MissingParameter: Either 'filePath' or 'path' must be specified.");
+    }
+
     // Prevent path traversal
-    const safePath = path.resolve(SANDBOX_DIR, input.filePath);
+    const safePath = path.resolve(SANDBOX_DIR, targetPath);
     if (!safePath.startsWith(SANDBOX_DIR)) {
       throw new Error("AccessDenied: Path traversal attempt detected.");
     }
 
-    if (input.action === "read") {
+    const action = input.action || (input.content !== undefined ? "write" : "read");
+
+    if (action === "read") {
       if (!fs.existsSync(safePath)) {
-        throw new Error(`FileNotFound: File does not exist at path: ${input.filePath}`);
+        throw new Error(`FileNotFound: File does not exist at path: ${targetPath}`);
       }
       return fs.readFileSync(safePath, "utf-8");
-    } else if (input.action === "write") {
+    } else if (action === "write") {
+      // Auto-create parent folders if they don't exist
+      fs.mkdirSync(path.dirname(safePath), { recursive: true });
       fs.writeFileSync(safePath, input.content || "", "utf-8");
-      return `File successfully written to ${input.filePath}`;
+      return `File successfully written to ${targetPath}`;
+    } else {
+      throw new Error(`InvalidAction: Action must be 'read' or 'write', got '${action}'`);
     }
   }
 }

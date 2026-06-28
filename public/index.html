@@ -105,7 +105,7 @@
         </nav>
 
         <div class="agent-chat-card" id="agent-chat-card">
-          <div class="agent-chat-avatar">🔍</div>
+          <div id="robot-canvas-container" class="robot-canvas-container"></div>
           <div class="agent-chat-bubble">
             <p id="agent-chat-text">I'm Alice 👋<br>Researching the best information for you!</p>
           </div>
@@ -320,6 +320,11 @@
           <span class="dock-card-label">Tokens Used</span>
           <span class="dock-card-value" id="stat-tokens">0</span>
           <span class="dock-card-delta success" id="stat-tokens-delta"></span>
+        </div>
+
+        <!-- Hologram Card -->
+        <div class="dock-card hologram-card">
+          <div id="hologram-container" class="hologram-container"></div>
         </div>
       </div>
 
