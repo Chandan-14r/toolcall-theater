@@ -1,64 +1,118 @@
-// App Observability Orchestrator
-import { initThreeScene, highlightNode } from "./three-scene.js";
+import { initThreeScene, highlightNode } from './three-scene.js';
 
+// ── State ────────────────────────────────────────────────────────────────────
 let scenarios = [];
 let scenario = null;
 let runId = null;
 let eventSource = null;
 let events = [];
-let runStatusText = "ready";
+let runStatusText = 'ready';
 let selectedIndex = null;
-
-// Timer state
 let timerInterval = null;
 let timerStart = 0;
+let activeTab = 'output';
+let prettyPrint = true;
+let paused = false;
 
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
-
-const nodes = {
-  title: $("#scenario-title"),
-  eyebrow: $("#scenario-eyebrow"),
-  prompt: $("#scenario-prompt"),
-  status: $("#status-text"),
-  dot: $("#status-dot"),
-  events: $("#metric-events"),
-  tools: $("#metric-tools"),
-  latency: $("#metric-latency"),
-  inspectTitle: $("#inspect-title"),
-  inspectCopy: $("#inspect-copy"),
-  inspectDetails: $("#inspect-details"),
-  play: $("#play"),
-  step: $("#step"),
-  restart: $("#restart"),
-  export: $("#export"),
-  timer: $("#elapsed-timer"),
-  threeContainer: $("#three-container"),
-  traceScrollArea: $("#trace-scroll-area"),
-  trace: $("#trace"),
-  toggle3d: $("#toggle-3d-btn"),
-  toggleList: $("#toggle-list-btn")
-};
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function esc(value) {
-  if (value === undefined || value === null) return "";
-  return String(value).replace(/[&<>]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[char]);
+  const s = String(value ?? '');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function elapsed() {
-  return events.reduce((sum, event) => sum + (event.ms || 0), 0);
+  return events.reduce((sum, e) => sum + (e.ms || 0), 0);
 }
 
-// Timer management
+function formatTime(ms) {
+  if (ms == null) return '—';
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
+}
+
+function getAgentFromEvent(event) {
+  if (!event || !event.title) return null;
+  const t = event.title.toLowerCase();
+  if (t.includes('coordinator')) return 'coordinator';
+  if (t.includes('researcher') || t.includes('research')) return 'researcher';
+  if (t.includes('programmer') || t.includes('program') || t.includes('coder')) return 'programmer';
+  if (t.includes('reviewer') || t.includes('review')) return 'reviewer';
+  return null;
+}
+
+function copyToClipboard() {
+  if (selectedIndex == null || !events[selectedIndex]) return;
+  const ev = events[selectedIndex];
+  const text = JSON.stringify(ev, null, 2);
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function downloadJSON() {
+  if (selectedIndex == null || !events[selectedIndex]) return;
+  const ev = events[selectedIndex];
+  const text = JSON.stringify(ev, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `event-${ev.id || selectedIndex}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportRun() {
+  const payload = { runId, scenario, events, status: runStatusText };
+  const text = JSON.stringify(payload, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `run-${runId || 'export'}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function syntaxHighlightJSON(obj) {
+  if (!obj) return '';
+  const json = JSON.stringify(obj, null, 2);
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")(\s*:)/g,
+      '<span class="json-key">$1</span>$3'
+    )
+    .replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")/g,
+      '<span class="json-string">$1</span>'
+    )
+    .replace(/\b(true|false|null)\b/g, '<span class="json-null">$1</span>')
+    .replace(
+      /\b(-?\d+\.?\d*([eE][+-]?\d+)?)\b/g,
+      '<span class="json-number">$1</span>'
+    );
+}
+
+// ── Timer ────────────────────────────────────────────────────────────────────
+
 function startTimer() {
-  stopTimer();
+  if (timerInterval) return;
   timerStart = Date.now();
+  const el = document.querySelector('#elapsed-timer');
   timerInterval = setInterval(() => {
     const diff = Date.now() - timerStart;
-    const mins = Math.floor(diff / 60000).toString().padStart(2, "0");
-    const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, "0");
-    const ms = Math.floor((diff % 1000) / 100).toString();
-    nodes.timer.textContent = `${mins}:${secs}.${ms}s`;
+    const totalSec = diff / 1000;
+    const mins = Math.floor(totalSec / 60);
+    const secs = Math.floor(totalSec % 60);
+    const tenths = Math.floor((diff % 1000) / 100);
+    if (el) {
+      el.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${tenths}s`;
+    }
   }, 100);
 }
 
@@ -71,336 +125,620 @@ function stopTimer() {
 
 function resetTimer() {
   stopTimer();
-  nodes.timer.textContent = "00:00.0s";
+  const el = document.querySelector('#elapsed-timer');
+  if (el) el.textContent = '00:00.0s';
 }
+
+// ── Fetch Stats ──────────────────────────────────────────────────────────────
 
 async function fetchStats() {
   try {
-    const res = await fetch("/api/stats");
-    const data = await res.json();
-    
-    // SQLite relational totals
-    $("#stat-sessions").textContent = data.sessions;
-    $("#stat-succeeded").textContent = data.runs.find(r => r.status === "succeeded")?.count || 0;
-    $("#stat-failed").textContent = data.runs.find(r => r.status === "failed")?.count || 0;
-    $("#stat-memories").textContent = data.memories;
+    const res = await fetch('/api/stats');
+    if (!res.ok) return;
+    const stats = await res.json();
 
-    // Tool lists rates
-    const toolsList = $("#stat-tools-list");
-    if (data.tools && data.tools.length > 0) {
-      toolsList.innerHTML = data.tools.map(t => `
-        <div class="tool-stat-card">
-          <strong>${esc(t.tool_name)}</strong>
-          <span>${t.count} executions</span>
-          <span>${Math.round(t.avg_duration)}ms avg latency</span>
-        </div>
-      `).join("");
-    } else {
-      toolsList.innerHTML = `<p class="empty-dock-text">No tools executed in this session.</p>`;
+    const set = (sel, val) => {
+      const el = document.querySelector(sel);
+      if (el) el.textContent = val ?? '—';
+    };
+
+    set('#stat-sessions', stats.sessions ?? 0);
+    set('#stat-succeeded', stats.succeeded ?? 0);
+    set('#stat-failed', stats.failed ?? 0);
+    set('#stat-memories', stats.memories ?? 0);
+
+    const totalRuns = (stats.succeeded ?? 0) + (stats.failed ?? 0) + (stats.sessions ?? 0);
+    set('#stat-total-runs', totalRuns);
+
+    const successRate = totalRuns > 0 ? (stats.succeeded ?? 0) / totalRuns : 0;
+    const failRate = totalRuns > 0 ? (stats.failed ?? 0) / totalRuns : 0;
+    set('#stat-success-pct', `${Math.round(successRate * 100)}%`);
+    set('#stat-fail-pct', `${Math.round(failRate * 100)}%`);
+
+    // Donut chart
+    const circumference = 2 * Math.PI * 35; // ≈ 220
+    const donutCircle = document.querySelector('#donut-circle');
+    if (donutCircle) {
+      const offset = circumference * (1 - successRate);
+      donutCircle.style.strokeDasharray = `${circumference}`;
+      donutCircle.style.strokeDashoffset = `${offset}`;
     }
+    const donutLabel = document.querySelector('#donut-label');
+    if (donutLabel) {
+      donutLabel.textContent = `${Math.round(successRate * 100)}%`;
+    }
+
+    // Tool stats
+    const toolsList = document.querySelector('#stat-tools-list');
+    if (toolsList && stats.tools) {
+      toolsList.innerHTML = '';
+      const tools = Array.isArray(stats.tools) ? stats.tools : Object.entries(stats.tools).map(([name, data]) => ({ name, ...data }));
+      tools.forEach((tool) => {
+        const card = document.createElement('div');
+        card.className = 'tool-card';
+        card.innerHTML = `
+          <span class="tool-card-name">${esc(tool.name)}</span>
+          <span class="tool-card-count">${tool.count ?? 0} calls</span>
+          <span class="tool-card-avg">${formatTime(tool.avgMs ?? tool.avg_ms ?? 0)}</span>
+        `;
+        toolsList.appendChild(card);
+      });
+
+      // Average response time across all tools
+      let totalAvg = 0;
+      let toolCount = 0;
+      tools.forEach((tool) => {
+        const avg = tool.avgMs ?? tool.avg_ms ?? 0;
+        if (avg > 0) { totalAvg += avg; toolCount++; }
+      });
+      set('#stat-avg-time', toolCount > 0 ? formatTime(totalAvg / toolCount) : '—');
+    }
+
+    // Token estimate: sum of events * ~150 tokens per event
+    const totalEvents = stats.totalEvents ?? events.length;
+    const tokens = totalEvents * 150;
+    const tokenStr = tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}K` : String(tokens);
+    set('#stat-tokens', tokenStr);
   } catch (err) {
-    console.error("Failed to load platform stats:", err);
+    console.warn('Failed to fetch stats:', err);
   }
 }
 
-async function init() {
-  // Fetch scenarios from backend
-  const res = await fetch("/api/scenarios");
-  scenarios = await res.json();
-  
-  // Try to pre-select "Vendor Brief" scenario if available
-  scenario = scenarios.find(s => s.id.includes("vendor")) || scenarios[0];
-  
-  // Render
-  render();
-  await fetchStats();
-
-  // Initialize 3D orbital neural node graph
-  setTimeout(() => {
-    initThreeScene("three-container");
-  }, 100);
-
-  // Setup tab buttons listeners
-  $$(".nav-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      $$(".nav-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      
-      const tabId = btn.dataset.tab;
-      $$(".tab-content-pane").forEach(pane => pane.classList.add("hidden"));
-      $(`#tab-content-${tabId}`).classList.remove("hidden");
-    });
-  });
-
-  // Setup View Toggle buttons
-  nodes.toggle3d.addEventListener("click", () => {
-    nodes.toggle3d.classList.add("active");
-    nodes.toggleList.classList.remove("active");
-    nodes.threeContainer.classList.remove("hidden");
-    nodes.traceScrollArea.classList.add("hidden");
-  });
-
-  nodes.toggleList.addEventListener("click", () => {
-    nodes.toggleList.classList.add("active");
-    nodes.toggle3d.classList.remove("active");
-    nodes.traceScrollArea.classList.remove("hidden");
-    nodes.threeContainer.classList.add("hidden");
-  });
-}
-
-function renderInspector(event) {
-  if (!event) {
-    nodes.inspectTitle.textContent = "Telemetry Inspector";
-    nodes.inspectCopy.textContent = "Select any event from the timeline or start a run to inspect agent reasoning, tool data, and outputs.";
-    nodes.inspectDetails.innerHTML = "";
-    return;
-  }
-
-  nodes.inspectTitle.textContent = event.title;
-  nodes.inspectCopy.textContent = event.detail || (event.kind === "tool" ? `Executed tool: ${event.tool}` : "Reasoning thought.");
-
-  const sections = [];
-
-  // If there's tool info, format nicely
-  if (event.tool) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label">Tool Used</span>
-        <code style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 14px; font-weight: bold;">${esc(event.tool)}</code>
-      </div>
-    `);
-  }
-
-  // Display input/outputs inside clean code blocks
-  if (event.input) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label">Parameters (Input)</span>
-        <pre class="inspect-code-container">${esc(JSON.stringify(event.input, null, 2))}</pre>
-      </div>
-    `);
-  }
-
-  if (event.output) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label">Response (Output)</span>
-        <pre class="inspect-code-container" style="color: var(--success);">${esc(JSON.stringify(event.output, null, 2))}</pre>
-      </div>
-    `);
-  }
-
-  if (event.error) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label" style="color: var(--error);">Execution Error</span>
-        <pre class="inspect-code-container" style="color: var(--error); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05);">${esc(event.error)}</pre>
-      </div>
-    `);
-  }
-
-  if (event.evidence) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label">Retrieved Evidence</span>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
-          ${event.evidence.map(item => `<div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); padding: 8px 12px; border-radius: 8px; font-size: 12px;">↗ ${esc(item)}</div>`).join("")}
-        </div>
-      </div>
-    `);
-  }
-
-  // Handle Playwright browser screenshot embeds if available
-  if (event.tool === "browser" && event.output && event.output.screenshotPath) {
-    sections.push(`
-      <div class="inspect-section">
-        <span class="inspect-label">Browser Viewport Screenshot</span>
-        <img class="screenshot-preview" src="${esc(event.output.screenshotPath)}" alt="Playwright Viewport Capture" />
-      </div>
-    `);
-  }
-
-  nodes.inspectDetails.innerHTML = sections.join("");
-}
+// ── Render ───────────────────────────────────────────────────────────────────
 
 function render() {
-  nodes.title.textContent = scenario?.title || "Ready to Launch";
-  nodes.eyebrow.textContent = scenario?.eyebrow || "Task Deployment";
-  nodes.prompt.textContent = scenario?.prompt || "Select an agent scenario to start execution.";
-  nodes.status.textContent = runStatusText;
-  
-  // Status dot indicators
-  nodes.dot.className = "";
-  if (runStatusText === "running") {
-    nodes.dot.classList.add("dot-running");
+  // Scenario info
+  const titleEl = document.querySelector('#scenario-title');
+  if (titleEl) titleEl.textContent = scenario?.title ?? scenario?.name ?? 'No scenario';
+  const eyebrowEl = document.querySelector('#scenario-eyebrow');
+  if (eyebrowEl) eyebrowEl.textContent = scenario?.category ?? scenario?.eyebrow ?? 'Scenario';
+  const promptEl = document.querySelector('#run-prompt');
+  if (promptEl) promptEl.textContent = scenario?.prompt ?? scenario?.description ?? '';
+
+  // Update active scenario buttons
+  document.querySelectorAll('.scenario').forEach(btn => {
+    const isSel = btn.textContent === scenario?.title;
+    btn.classList.toggle('active', isSel);
+  });
+
+  // Run ID
+  const runIdEl = document.querySelector('#run-id-text');
+  if (runIdEl) runIdEl.textContent = runId ?? 'No active run';
+
+  // Status
+  const statusText = document.querySelector('#status-text');
+  if (statusText) statusText.textContent = runStatusText;
+  const statusDot = document.querySelector('#status-dot');
+  if (statusDot) {
+    statusDot.className = 'status-dot';
+    if (runStatusText === 'running') statusDot.classList.add('dot-running');
+    else if (runStatusText === 'succeeded') statusDot.classList.add('dot-succeeded');
+    else if (runStatusText === 'failed') statusDot.classList.add('dot-failed');
+    else statusDot.classList.add('dot-idle');
+  }
+
+  // Live badge
+  const liveBadge = document.querySelector('#live-badge');
+  if (liveBadge) liveBadge.style.display = runStatusText === 'running' ? '' : 'none';
+
+  // Metrics
+  const metricEvents = document.querySelector('#metric-events');
+  if (metricEvents) metricEvents.textContent = events.length;
+  const toolEvents = events.filter((e) => e.kind === 'tool');
+  const metricTools = document.querySelector('#metric-tools');
+  if (metricTools) metricTools.textContent = toolEvents.length;
+  const metricLatency = document.querySelector('#metric-latency');
+  if (metricLatency) metricLatency.textContent = formatTime(elapsed());
+
+  // Timer
+  if (runStatusText === 'running') {
     startTimer();
-  } else if (runStatusText === "succeeded") {
-    nodes.dot.classList.add("dot-succeeded");
+  } else if (runStatusText === 'succeeded' || runStatusText === 'failed') {
     stopTimer();
-  } else if (runStatusText === "failed") {
-    nodes.dot.classList.add("dot-failed");
-    stopTimer();
-  } else {
-    nodes.dot.classList.add("dot-idle");
+  } else if (runStatusText === 'ready') {
     resetTimer();
   }
 
-  // Update hero stats
-  nodes.events.textContent = events.length;
-  nodes.tools.textContent = events.filter(e => e.kind === "tool").length;
-  nodes.latency.textContent = `${elapsed()}ms`;
+  // Agent pipeline
+  const latestEvent = events.length > 0 ? events[events.length - 1] : null;
+  const activeAgent = getAgentFromEvent(latestEvent);
+  document.querySelectorAll('.pipeline-node').forEach((node) => {
+    node.classList.remove('active');
+    const agentName = node.getAttribute('data-agent') || node.textContent.trim().toLowerCase();
+    if (activeAgent && agentName.includes(activeAgent)) {
+      node.classList.add('active');
+    }
+  });
 
-  // Render events in list timeline view
-  nodes.trace.innerHTML = "";
+  // Agent chat card
+  const chatText = document.querySelector('#agent-chat-text');
+  if (chatText) {
+    const messages = {
+      coordinator: 'Coordinating task delegation across agents...',
+      researcher: 'Searching knowledge bases and gathering information...',
+      programmer: 'Writing and refining code solutions...',
+      reviewer: 'Reviewing output quality and correctness...',
+    };
+    if (activeAgent && messages[activeAgent]) {
+      chatText.textContent = messages[activeAgent];
+    } else if (runStatusText === 'running') {
+      chatText.textContent = 'Processing...';
+    } else if (runStatusText === 'succeeded') {
+      chatText.textContent = 'Run completed successfully.';
+    } else if (runStatusText === 'failed') {
+      chatText.textContent = 'Run encountered an error.';
+    } else {
+      chatText.textContent = 'Awaiting instructions.';
+    }
+  }
+
+  // Timeline
+  renderTimeline();
+
+  // Inspector
+  const selectedEvent = selectedIndex != null ? events[selectedIndex] : null;
+  renderInspector(selectedEvent);
+
+  // Button states
+  const btnPlay = document.querySelector('#play');
+  if (btnPlay) btnPlay.disabled = runStatusText === 'running';
+  const btnStopRun = document.querySelector('#btn-stop-run');
+  if (btnStopRun) btnStopRun.style.display = runStatusText === 'running' ? '' : 'none';
+}
+
+// ── Timeline Rendering ──────────────────────────────────────────────────────
+
+function renderTimeline() {
+  const container = document.querySelector('#timeline-list');
+  if (!container) return;
+  container.innerHTML = '';
+
   events.forEach((event, index) => {
-    const fragment = $("#event-template").content.cloneNode(true);
-    const button = fragment.querySelector("button");
-    
-    button.setAttribute("data-kind", event.error ? "failed" : event.kind);
-    if (index === selectedIndex) button.classList.add("active");
+    const card = document.createElement('div');
+    card.className = 'timeline-card event';
+    card.setAttribute('data-kind', event.kind);
+    if (index === selectedIndex) card.classList.add('active');
 
-    // Assign text content
-    button.querySelector(".event-icon").textContent = { thought: "✦", tool: "⚡", result: "✓", failed: "✕" }[event.kind] || "✦";
-    button.querySelector(".event-title").textContent = event.title;
-    button.querySelector(".event-detail").textContent = event.detail || event.tool || "";
-    
-    // Elapsed step timer
-    if (event.ms) {
-      button.querySelector(".event-time").textContent = `${event.ms}ms`;
+    // Kind-based styling
+    const kindColors = { thought: '#a78bfa', tool: '#38bdf8', result: '#34d399', approval: '#fbbf24' };
+    const kindIcons = { thought: '✦', tool: '⚡', result: '✓', approval: '⚠' };
+    const accentColor = kindColors[event.kind] || '#64748b';
+    const icon = kindIcons[event.kind] || '●';
+
+    // Timestamp
+    const ts = event.timestamp ? new Date(event.timestamp) : null;
+    const timeStr = ts
+      ? `${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}:${String(ts.getSeconds()).padStart(2, '0')}`
+      : '';
+
+    // Determine if latest running event
+    const isLatest = runStatusText === 'running' && index === events.length - 1;
+
+    // Agent name
+    const agentName = getAgentFromEvent(event) || event.agent || 'Agent';
+    const agentLabel = agentName.charAt(0).toUpperCase() + agentName.slice(1);
+
+    // Description
+    const fullDetail = event.detail || event.title || '';
+    const isSelected = index === selectedIndex;
+    const truncated = !isSelected && fullDetail.length > 120
+      ? fullDetail.slice(0, 120) + '…'
+      : fullDetail;
+
+    // Build inner HTML
+    let html = `
+      <div class="card-accent-line" style="background:${accentColor}"></div>
+      <div class="card-icon" style="color:${accentColor}">${icon}</div>
+      <div class="card-content">
+        <div class="card-title-row">
+          <strong>${esc(agentLabel)}</strong>
+          ${isLatest ? '<span class="card-live-badge">LIVE</span>' : ''}
+          <span class="card-timestamp">${esc(timeStr)}</span>
+        </div>
+        <p class="card-description">${esc(truncated)}</p>
+    `;
+
+    // Tool badge
+    if (event.kind === 'tool' && event.tool) {
+      html += `<span class="card-tool-badge">${esc(event.tool)}</span>`;
     }
 
-    button.addEventListener("click", () => {
+    // Nested search results
+    if (event.kind === 'tool' && event.output && Array.isArray(event.output)) {
+      const results = event.output;
+      html += `<div class="card-nested">`;
+      html += `<div class="search-results-header">${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
+      results.forEach((item) => {
+        const title = item.title || item.name || 'Result';
+        const domain = item.domain || item.url || '';
+        const score = item.score ?? item.relevance ?? 0.5;
+        const firstLetter = title.charAt(0).toUpperCase();
+        html += `
+          <div class="search-result-item">
+            <div class="result-favicon">${esc(firstLetter)}</div>
+            <div class="result-info">
+              <div class="result-title">${esc(title)}</div>
+              <div class="result-domain">${esc(domain)}</div>
+              <div class="relevance-bar">
+                <div class="relevance-fill" style="width:${Math.round(score * 100)}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`; // close .card-content
+
+    card.innerHTML = html;
+    card.addEventListener('click', () => {
       selectedIndex = index;
       render();
     });
-    
-    nodes.trace.append(button);
+    container.appendChild(card);
   });
 
-  const selected = selectedIndex === null ? events.at(-1) : events[selectedIndex];
-  renderInspector(selected);
+  // Auto-scroll to bottom on new events
+  const scrollEl = document.querySelector('#timeline-scroll') || container;
+  scrollEl.scrollTop = scrollEl.scrollHeight;
+}
 
-  // Active avatars styling highlight based on who is acting
-  $$(".agent-avatar-card").forEach(c => c.classList.remove("active"));
-  if (selected) {
-    const titleLower = selected.title.toLowerCase();
-    if (titleLower.includes("coordinator")) {
-      $("#avatar-coordinator").classList.add("active");
-    } else if (titleLower.includes("researcher") || titleLower.includes("alice") || titleLower.includes("websearch") || titleLower.includes("browser")) {
-      $("#avatar-researcher").classList.add("active");
-    } else if (titleLower.includes("programmer") || titleLower.includes("bob") || titleLower.includes("python") || titleLower.includes("shell") || titleLower.includes("filesystem")) {
-      $("#avatar-programmer").classList.add("active");
-    } else if (titleLower.includes("reviewer") || titleLower.includes("charlie")) {
-      $("#avatar-reviewer").classList.add("active");
-    }
+// ── Inspector Rendering ──────────────────────────────────────────────────────
+
+function renderInspector(event) {
+  const inspectTitle = document.querySelector('#inspect-title');
+  const inspectBody = document.querySelector('#inspect-body') || document.querySelector('.inspector-body');
+  const resultHeader = document.querySelector('.inspector-result-header');
+
+  if (!event) {
+    if (inspectTitle) inspectTitle.textContent = 'No event selected';
+    if (resultHeader) resultHeader.innerHTML = '<span class="inspector-empty">Select an event from the timeline</span>';
+    if (inspectBody) inspectBody.innerHTML = '<div class="inspector-empty-state"><p>Select an event from the timeline to inspect its details.</p></div>';
+    return;
   }
 
-  // Disable controls while running
-  const isRunning = runStatusText === "running";
-  nodes.play.disabled = isRunning || !scenario;
-  nodes.step.disabled = true; // Autonomous streaming execution
-  nodes.restart.disabled = isRunning;
-  nodes.export.disabled = events.length === 0;
+  if (inspectTitle) inspectTitle.textContent = event.title || 'Event';
 
-  nodes.play.textContent = runStatusText === "ready" ? "Launch Run →" : "Launch New Run →";
+  // Result header with success/error badge
+  if (resultHeader) {
+    const isError = event.error || event.kind === 'approval';
+    const badgeClass = isError ? 'badge-error' : 'badge-success';
+    const badgeText = isError ? 'Error' : 'Success';
+    resultHeader.innerHTML = `
+      <span>${esc(event.title || 'Event')}</span>
+      <span class="inspector-badge ${badgeClass}">${badgeText}</span>
+    `;
+  }
+
+  if (!inspectBody) return;
+
+  let content = '';
+
+  switch (activeTab) {
+    case 'input': {
+      if (event.input && typeof event.input === 'object' && Object.keys(event.input).length > 0) {
+        content = `<pre class="json-display">${syntaxHighlightJSON(event.input)}</pre>`;
+      } else if (event.input && typeof event.input === 'string') {
+        content = `<pre class="json-display">${esc(event.input)}</pre>`;
+      } else {
+        content = '<div class="inspector-empty-state"><p>No input data for this event.</p></div>';
+      }
+      break;
+    }
+    case 'output': {
+      if (event.output && typeof event.output === 'object') {
+        content = `<pre class="json-display">${syntaxHighlightJSON(event.output)}</pre>`;
+      } else if (event.output) {
+        content = `<pre class="json-display">${esc(String(event.output))}</pre>`;
+      } else if (event.detail) {
+        content = `<pre class="json-display">${esc(event.detail)}</pre>`;
+      } else {
+        content = '<div class="inspector-empty-state"><p>No output data for this event.</p></div>';
+      }
+      break;
+    }
+    case 'tool': {
+      const toolName = event.tool || '—';
+      const duration = event.ms != null ? formatTime(event.ms) : '—';
+      content = `
+        <div class="inspector-detail-grid">
+          <div class="detail-row"><span class="detail-label">Tool</span><span class="detail-value">${esc(toolName)}</span></div>
+          <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${duration}</span></div>
+          <div class="detail-row"><span class="detail-label">Permissions</span><span class="detail-value">${event.permissions || 'standard'}</span></div>
+          <div class="detail-row"><span class="detail-label">Kind</span><span class="detail-value">${esc(event.kind || '—')}</span></div>
+        </div>
+      `;
+      break;
+    }
+    case 'metadata': {
+      content = `
+        <div class="inspector-detail-grid">
+          <div class="detail-row"><span class="detail-label">Event ID</span><span class="detail-value">${esc(event.id ?? '—')}</span></div>
+          <div class="detail-row"><span class="detail-label">Run ID</span><span class="detail-value">${esc(event.runId ?? runId ?? '—')}</span></div>
+          <div class="detail-row"><span class="detail-label">Kind</span><span class="detail-value">${esc(event.kind ?? '—')}</span></div>
+          <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value">${event.timestamp ? new Date(event.timestamp).toLocaleString() : '—'}</span></div>
+          <div class="detail-row"><span class="detail-label">Agent</span><span class="detail-value">${esc(getAgentFromEvent(event) || event.agent || '—')}</span></div>
+        </div>
+      `;
+      break;
+    }
+    default:
+      content = '<div class="inspector-empty-state"><p>Unknown tab.</p></div>';
+  }
+
+  inspectBody.innerHTML = content;
 }
+
+// ── Live Run ─────────────────────────────────────────────────────────────────
 
 async function startLiveRun() {
+  // Close existing stream
   if (eventSource) {
     eventSource.close();
+    eventSource = null;
   }
+
+  // Reset
   events = [];
   selectedIndex = null;
-  runStatusText = "running";
+  runStatusText = 'running';
+  paused = false;
+
+  // Show timeline view, hide 3D
+  const threeContainer = document.querySelector('#three-container');
+  const timelineScroll = document.querySelector('#timeline-scroll');
+  if (threeContainer) threeContainer.style.display = 'none';
+  if (timelineScroll) timelineScroll.style.display = '';
+
   render();
 
-  // Create a new run session on backend
-  const res = await fetch("/api/runs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenarioId: scenario.id })
-  });
-  const data = await res.json();
-  runId = data.runId;
+  try {
+    const res = await fetch('/api/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenarioId: scenario?.id }),
+    });
+    const data = await res.json();
+    runId = data.runId || data.id;
+    render();
 
-  // Connect to SSE stream
-  eventSource = new EventSource(`/api/runs/${runId}/stream`);
+    // Connect SSE
+    eventSource = new EventSource(`/api/runs/${runId}/stream`);
 
-  eventSource.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-    if (msg.type === "status_changed") {
-      runStatusText = msg.status;
-      render();
-      if (msg.status === "complete" || msg.status === "failed" || msg.status === "succeeded") {
+    eventSource.onmessage = (msg) => {
+      let payload;
+      try {
+        payload = JSON.parse(msg.data);
+      } catch {
+        return;
+      }
+
+      if (payload.type === 'status_changed' || payload.kind === 'status_changed') {
+        runStatusText = payload.status || payload.runStatus || runStatusText;
+        render();
+        // Close on terminal states
+        if (runStatusText === 'succeeded' || runStatusText === 'failed') {
+          eventSource.close();
+          eventSource = null;
+          fetchStats();
+        }
+      } else if (payload.type === 'step_added' || payload.kind !== 'status_changed') {
+        const event = payload.event || payload;
+        events.push(event);
+        selectedIndex = events.length - 1;
+
+        // Highlight 3D node
+        const agent = getAgentFromEvent(event);
+        if (agent) {
+          try { highlightNode(agent); } catch { /* 3D may not be ready */ }
+        }
+
+        render();
+      }
+    };
+
+    eventSource.onerror = () => {
+      if (eventSource) {
         eventSource.close();
-        stopTimer();
-        fetchStats();
+        eventSource = null;
       }
-    } else if (msg.type === "step_added") {
-      events.push(msg.event);
-      
-      // Auto-highlight corresponding 3D node
-      let targetNode = "";
-      if (msg.event.tool) {
-        targetNode = msg.event.tool;
-      } else {
-        const titleLower = msg.event.title.toLowerCase();
-        if (titleLower.includes("coordinator")) targetNode = "Coordinator";
-        else if (titleLower.includes("researcher") || titleLower.includes("alice")) targetNode = "Researcher";
-        else if (titleLower.includes("programmer") || titleLower.includes("bob")) targetNode = "Programmer";
-        else if (titleLower.includes("reviewer") || titleLower.includes("charlie")) targetNode = "Reviewer";
+      if (runStatusText === 'running') {
+        runStatusText = 'failed';
       }
-
-      if (targetNode) {
-        highlightNode(targetNode);
-      }
-
       render();
-      
-      // Auto scroll timeline if list view is active
-      nodes.traceScrollArea.scrollTop = nodes.traceScrollArea.scrollHeight;
-    }
-  };
-
-  eventSource.onerror = (err) => {
-    console.error("SSE stream error:", err);
-    eventSource.close();
-    runStatusText = "failed";
-    stopTimer();
+      fetchStats();
+    };
+  } catch (err) {
+    console.error('Failed to start run:', err);
+    runStatusText = 'failed';
     render();
     fetchStats();
-  };
+  }
 }
 
-function restart() {
+function restartRun() {
   if (eventSource) {
     eventSource.close();
+    eventSource = null;
   }
   events = [];
-  runId = null;
-  runStatusText = "ready";
   selectedIndex = null;
+  runId = null;
+  runStatusText = 'ready';
+  paused = false;
   resetTimer();
   render();
 }
 
-function exportRun() {
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    scenario: scenario?.title || "",
-    runId,
-    status: runStatusText,
-    events
-  };
-  const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: `${scenario?.id || "live"}-run-trace.json` });
-  link.click();
-  URL.revokeObjectURL(url);
+// ── Initialization ───────────────────────────────────────────────────────────
+
+async function init() {
+  // 1. Fetch scenarios
+  try {
+    const res = await fetch('/api/scenarios');
+    scenarios = await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch scenarios:', err);
+    scenarios = [];
+  }
+
+  // 2. Pick default scenario
+  scenario = scenarios.find((s) => (s.id || '').includes('research')) || scenarios[0] || null;
+
+  // Render scenario selection buttons dynamically
+  const scenarioList = document.querySelector('#scenario-buttons-list');
+  if (scenarioList) {
+    scenarioList.innerHTML = '';
+    scenarios.forEach((s) => {
+      const btn = document.createElement('button');
+      btn.className = `scenario ${scenario?.id === s.id ? 'active' : ''}`;
+      btn.textContent = s.title;
+      btn.addEventListener('click', () => {
+        scenario = s;
+        render();
+      });
+      scenarioList.appendChild(btn);
+    });
+  }
+
+  // 3. Render
+  render();
+
+  // 4. Fetch stats
+  fetchStats();
+
+  // 5. Init Three.js scene
+  setTimeout(() => {
+    try {
+      initThreeScene('three-container');
+    } catch (err) {
+      console.warn('Three.js init failed:', err);
+    }
+  }, 100);
+
+  // 6. Sidebar navigation
+  document.querySelectorAll('.sidebar-link').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.sidebar-link').forEach((l) => l.classList.remove('active'));
+      link.classList.add('active');
+
+      const tab = link.getAttribute('data-tab') || link.getAttribute('href')?.replace('#', '') || 'live';
+      const allPanes = ['tab-content-live', 'tab-content-agents', 'tab-content-tools', 'tab-content-memory', 'tab-content-settings'];
+      allPanes.forEach((id) => {
+        const pane = document.querySelector(`#${id}`);
+        if (pane) pane.style.display = 'none';
+      });
+      const activePane = document.querySelector(`#tab-content-${tab}`);
+      if (activePane) activePane.style.display = '';
+    });
+  });
+
+  // 7. View toggle (3D vs list)
+  const btn3D = document.querySelector('#toggle-3d-btn');
+  const btnList = document.querySelector('#toggle-list-btn');
+  const threeContainer = document.querySelector('#three-container');
+  const timelineScroll = document.querySelector('#timeline-scroll');
+
+  if (btn3D) {
+    btn3D.addEventListener('click', () => {
+      if (threeContainer) threeContainer.style.display = '';
+      if (timelineScroll) timelineScroll.style.display = 'none';
+      btn3D.classList.add('active');
+      if (btnList) btnList.classList.remove('active');
+    });
+  }
+  if (btnList) {
+    btnList.addEventListener('click', () => {
+      if (threeContainer) threeContainer.style.display = 'none';
+      if (timelineScroll) timelineScroll.style.display = '';
+      btnList.classList.add('active');
+      if (btn3D) btn3D.classList.remove('active');
+    });
+  }
+
+  // 8. Inspector tabs
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.getAttribute('data-tab') || btn.textContent.trim().toLowerCase();
+      const selectedEvent = selectedIndex != null ? events[selectedIndex] : null;
+      renderInspector(selectedEvent);
+    });
+  });
+
+  // 9. Inspector action buttons
+  const btnCopy = document.querySelector('#btn-copy');
+  if (btnCopy) btnCopy.addEventListener('click', copyToClipboard);
+
+  const btnDownload = document.querySelector('#btn-download');
+  if (btnDownload) btnDownload.addEventListener('click', downloadJSON);
+
+  const btnPrettyPrint = document.querySelector('#btn-pretty-print');
+  if (btnPrettyPrint) {
+    btnPrettyPrint.addEventListener('click', () => {
+      prettyPrint = !prettyPrint;
+      btnPrettyPrint.classList.toggle('active', prettyPrint);
+      const selectedEvent = selectedIndex != null ? events[selectedIndex] : null;
+      renderInspector(selectedEvent);
+    });
+  }
+
+  // 10. Pause and stop buttons
+  const btnPause = document.querySelector('#btn-pause');
+  if (btnPause) {
+    btnPause.addEventListener('click', () => {
+      paused = !paused;
+      btnPause.classList.toggle('active', paused);
+      btnPause.textContent = paused ? 'Resume' : 'Pause';
+    });
+  }
+
+  const btnStopRun = document.querySelector('#btn-stop-run');
+  if (btnStopRun) {
+    btnStopRun.addEventListener('click', () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      runStatusText = 'failed';
+      render();
+      fetchStats();
+    });
+  }
+
+  // Event listeners for main action buttons
+  const btnPlay = document.querySelector('#play');
+  if (btnPlay) btnPlay.addEventListener('click', startLiveRun);
+
+  const btnRestart = document.querySelector('#restart');
+  if (btnRestart) btnRestart.addEventListener('click', restartRun);
+
+  const btnExport = document.querySelector('#export');
+  if (btnExport) btnExport.addEventListener('click', exportRun);
 }
 
-nodes.play.addEventListener("click", startLiveRun);
-nodes.restart.addEventListener("click", restart);
-nodes.export.addEventListener("click", exportRun);
-
-// Kickstart app
+// ── Boot ─────────────────────────────────────────────────────────────────────
 init();

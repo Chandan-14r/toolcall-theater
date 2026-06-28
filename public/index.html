@@ -4,349 +4,331 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
-    <meta name="description" content="A premium 3D observability console for autonomous multi-agent systems." />
-    <title>Agent Commander — Autonomous AI Platform</title>
+    <meta name="description" content="A premium 3D observability console for autonomous multi-agent AI systems." />
+    <title>Toolcall Theater — AI Agent Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- Background Space & Mesh Aurora Grid -->
     <div class="mesh-bg"></div>
 
-    <main class="console-layout">
-      <!-- 1. Left Navigation Rail -->
-      <aside class="sidebar-rail">
+    <!-- ═══════════════════════ TOP BAR ═══════════════════════ -->
+    <header class="topbar">
+      <div class="topbar-left">
         <div class="brand">
-          <span class="logo-icon">⏣</span>
-          <div class="brand-text">
-            <h2>commander</h2>
-            <p>autonomous ops</p>
+          <span class="brand-icon">⏣</span>
+          <div class="brand-name">
+            <h1>Toolcall Theater</h1>
+            <p>AI Agent Platform</p>
           </div>
         </div>
-        
-        <nav class="nav-links" aria-label="System Navigation">
-          <button class="nav-btn active" data-tab="live">
-            <span class="btn-icon">⚡</span> Live Console
+      </div>
+
+      <div class="topbar-center">
+        <div class="run-badge">
+          <span class="run-id" id="run-id-text">No active run</span>
+          <span class="live-badge" id="live-badge" style="display:none;">
+            <span class="live-dot"></span> LIVE
+          </span>
+          <span class="run-desc" id="run-prompt-short"></span>
+        </div>
+
+        <div class="agent-pipeline" id="agent-pipeline">
+          <div class="pipeline-node" id="pipe-coordinator" data-agent="coordinator">
+            <div class="pipeline-avatar">🛡️</div>
+            <span class="pipeline-label">Coordinator</span>
+            <span class="pipeline-sublabel">AI</span>
+          </div>
+          <div class="pipeline-connector"><span></span><span></span><span></span></div>
+          <div class="pipeline-node" id="pipe-researcher" data-agent="researcher">
+            <div class="pipeline-avatar">🔍</div>
+            <span class="pipeline-label">Researcher</span>
+            <span class="pipeline-sublabel">Alice</span>
+          </div>
+          <div class="pipeline-connector"><span></span><span></span><span></span></div>
+          <div class="pipeline-node" id="pipe-programmer" data-agent="programmer">
+            <div class="pipeline-avatar">💻</div>
+            <span class="pipeline-label">Programmer</span>
+            <span class="pipeline-sublabel">Bob</span>
+          </div>
+          <div class="pipeline-connector"><span></span><span></span><span></span></div>
+          <div class="pipeline-node" id="pipe-reviewer" data-agent="reviewer">
+            <div class="pipeline-avatar">✨</div>
+            <span class="pipeline-label">Reviewer</span>
+            <span class="pipeline-sublabel">Charlie</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button class="topbar-btn" id="btn-pause">⏸ Pause</button>
+        <button class="topbar-btn danger" id="btn-stop-run" style="display:none;">⏹ Stop Run</button>
+        <div class="user-avatar">👤</div>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════ APP LAYOUT ═══════════════════════ -->
+    <div class="app-layout">
+
+      <!-- ─── LEFT SIDEBAR ─── -->
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-tab="live">
+            <span class="sidebar-icon">📊</span> Dashboard
           </button>
-          <button class="nav-btn" data-tab="agents">
-            <span class="btn-icon">🤖</span> Agent Roles
+          <button class="sidebar-link active" data-tab="live">
+            <span class="sidebar-icon">⚡</span> Runs
           </button>
-          <button class="nav-btn" data-tab="tools">
-            <span class="btn-icon">🛠️</span> Tool Registry
+          <button class="sidebar-link" data-tab="agents">
+            <span class="sidebar-icon">🤖</span> Agents
           </button>
-          <button class="nav-btn" data-tab="memory">
-            <span class="btn-icon">🧠</span> Memory & VSM
+          <button class="sidebar-link" data-tab="tools">
+            <span class="sidebar-icon">🛠️</span> Tools
           </button>
-          <button class="nav-btn" data-tab="settings">
-            <span class="btn-icon">⚙️</span> Configuration
+          <button class="sidebar-link" data-tab="live">
+            <span class="sidebar-icon">🔄</span> Workflows
+          </button>
+          <button class="sidebar-link" data-tab="memory">
+            <span class="sidebar-icon">🧠</span> Memory
+          </button>
+          <button class="sidebar-link" data-tab="live">
+            <span class="sidebar-icon">📁</span> Files
+          </button>
+          <button class="sidebar-link" data-tab="live">
+            <span class="sidebar-icon">📈</span> Analytics
+          </button>
+          <button class="sidebar-link" data-tab="settings">
+            <span class="sidebar-icon">⚙️</span> Settings
           </button>
         </nav>
 
-        <div class="rail-footer-status">
-          <div class="footer-status-label">
-            <span class="pulse-green"></span> Database Connection
+        <div class="agent-chat-card" id="agent-chat-card">
+          <div class="agent-chat-avatar">🔍</div>
+          <div class="agent-chat-bubble">
+            <p id="agent-chat-text">I'm Alice 👋<br>Researching the best information for you!</p>
           </div>
-          <small>SQLite relational active</small>
         </div>
       </aside>
 
-      <!-- 2. Right Working Workspace Area -->
-      <section class="stage-container">
-        
-        <!-- Tab Content: Live Console -->
+      <!-- ─── MAIN CONTENT ─── -->
+      <div class="main-content">
+
+        <!-- TAB: Live Console -->
         <div id="tab-content-live" class="tab-content-pane">
-          <!-- Top Status & Hero Information Bar -->
-          <header class="console-header">
-            <div class="header-main">
-              <span class="eyebrow" id="scenario-eyebrow">Task Deployment</span>
-              <h1 id="scenario-title">Ready to Launch</h1>
-              <div class="scenario-prompt-box">
-                <span class="prompt-label">Active Prompt:</span>
-                <p id="scenario-prompt">Select an agent scenario to start execution.</p>
-              </div>
-            </div>
+          <div class="dashboard-grid">
 
-            <div class="header-status-card">
-              <div class="status-indicator">
-                <span id="status-dot" class="dot-idle"></span>
-                <span id="status-text">Ready</span>
-              </div>
-              <div class="header-timer">
-                <span class="timer-label">Running Timer:</span>
-                <span id="elapsed-timer">00:00.0s</span>
-              </div>
-            </div>
-          </header>
-
-          <!-- System Stats Hub -->
-          <section class="stats-hub" aria-label="Live run statistics">
-            <div class="stat-bubble">
-              <span class="stat-icon">📑</span>
-              <div class="stat-info">
-                <b id="metric-events">0</b>
-                <span>Run Events</span>
-              </div>
-            </div>
-            <div class="stat-bubble">
-              <span class="stat-icon">🔧</span>
-              <div class="stat-info">
-                <b id="metric-tools">0</b>
-                <span>Tool Executions</span>
-              </div>
-            </div>
-            <div class="stat-bubble">
-              <span class="stat-icon">⏳</span>
-              <div class="stat-info">
-                <b id="metric-latency">0ms</b>
-                <span>Session Duration</span>
-              </div>
-            </div>
-            <div class="stat-bubble">
-              <span class="stat-icon">🔑</span>
-              <div class="stat-info">
-                <b id="provider-badge">gemini-2.5</b>
-                <span>Active Provider</span>
-              </div>
-            </div>
-          </section>
-
-          <!-- Active Agents Display -->
-          <section class="agent-avatar-row" aria-label="System Agents">
-            <div class="agent-avatar-card" id="avatar-coordinator">
-              <div class="avatar-icon">🛡️</div>
-              <div>
-                <h4>Coordinator</h4>
-                <p>Planning & Routing</p>
-              </div>
-            </div>
-            <div class="agent-avatar-card" id="avatar-researcher">
-              <div class="avatar-icon">🔍</div>
-              <div>
-                <h4>Researcher</h4>
-                <p>Alice — Web & Files</p>
-              </div>
-            </div>
-            <div class="agent-avatar-card" id="avatar-programmer">
-              <div class="avatar-icon">💻</div>
-              <div>
-                <h4>Programmer</h4>
-                <p>Bob — Python & Shell</p>
-              </div>
-            </div>
-            <div class="agent-avatar-card" id="avatar-reviewer">
-              <div class="avatar-icon">✨</div>
-              <div>
-                <h4>Reviewer</h4>
-                <p>Charlie — Verification</p>
-              </div>
-            </div>
-          </section>
-
-          <!-- Main Screen Layout Columns -->
-          <div class="screen-grid">
-            
-            <!-- Central Operations Stage -->
-            <div class="operations-stage">
+            <!-- ─── EXECUTION TIMELINE ─── -->
+            <section class="timeline-panel">
               <div class="panel-header">
-                <div class="panel-title">
-                  <span class="panel-icon">📺</span>
-                  <div>
-                    <h3>Command Stage</h3>
-                    <p>Holographic 3D Node Map & Live Timeline</p>
-                  </div>
+                <div class="panel-header-left">
+                  <h2>Execution Timeline</h2>
+                  <span class="realtime-badge" id="realtime-badge">
+                    <span class="realtime-dot"></span> Real-time
+                  </span>
                 </div>
                 <div class="stage-toggles">
-                  <button id="toggle-3d-btn" class="toggle-btn active">3D Hologram</button>
-                  <button id="toggle-list-btn" class="toggle-btn">Timeline</button>
+                  <button id="toggle-3d-btn" class="toggle-btn">3D View</button>
+                  <button id="toggle-list-btn" class="toggle-btn active">Timeline</button>
                 </div>
               </div>
 
-              <!-- View 1: 3D Hologram Scene Canvas -->
-              <div id="three-container" class="three-container">
+              <!-- 3D Scene -->
+              <div id="three-container" class="three-container hidden">
                 <div class="loader-message">Initializing 3D neural core...</div>
               </div>
 
-              <!-- View 2: Live Trace Event Cards List (Scrollable) -->
-              <div id="trace-scroll-area" class="trace-scroll-area hidden">
-                <div id="trace" class="trace-timeline-list" aria-live="polite"></div>
+              <!-- Scenarios Selection -->
+              <div id="scenario-buttons-list" class="scenario-buttons-list"></div>
+
+              <!-- Active Scenario Details -->
+              <div class="scenario-details">
+                <span class="scenario-eyebrow" id="scenario-eyebrow"></span>
+                <h3 class="scenario-title" id="scenario-title"></h3>
+                <p class="scenario-prompt" id="run-prompt"></p>
               </div>
 
-              <!-- Dashboard Controls -->
-              <div class="stage-controls">
-                <button id="play" class="btn primary-btn">Launch Run <span class="arrow">→</span></button>
-                <button id="step" class="btn secondary-btn">Execute Step</button>
-                <button id="restart" class="btn text-btn">Reset</button>
-                <button id="export" class="btn text-btn export-btn">Export Run JSON ↗</button>
+              <!-- Timeline List -->
+              <div id="timeline-scroll" class="timeline-scroll">
+                <div id="timeline-list" class="timeline-list" aria-live="polite"></div>
               </div>
-            </div>
 
-            <!-- Progressive Inspector Side Panel -->
-            <aside class="details-inspector">
+              <!-- Controls -->
+              <div class="timeline-controls">
+                <button id="play" class="ctrl-btn primary">▶ Start Run</button>
+                <button id="step" class="ctrl-btn" style="display: none;">Execute Step</button>
+                <button id="restart" class="ctrl-btn">↻ Reset</button>
+                <button id="export" class="ctrl-btn">↗ Export JSON</button>
+                <div class="ctrl-spacer"></div>
+                <span class="ctrl-timer" id="elapsed-timer">00:00.0s</span>
+              </div>
+            </section>
+
+            <!-- ─── STEP INSPECTOR ─── -->
+            <aside class="inspector-panel">
               <div class="panel-header">
-                <div class="panel-title">
-                  <span class="panel-icon">👁️</span>
-                  <div>
-                    <h3 id="inspect-title">Telemetry Inspector</h3>
-                    <p>Real-time event parameters and outputs</p>
-                  </div>
+                <div class="panel-header-left">
+                  <h2 id="inspect-title">Step Inspector</h2>
+                </div>
+                <div class="inspector-actions-top">
+                  <button class="inspector-action-btn" title="Pin">📌</button>
+                  <button class="inspector-action-btn" title="Expand">⛶</button>
+                  <button class="inspector-action-btn" title="Code">{ }</button>
+                  <button class="inspector-action-btn" title="AI Assist">🤖</button>
                 </div>
               </div>
 
-              <div class="inspector-content">
-                <p id="inspect-copy" class="empty-inspector-text">
-                  Select any event from the timeline or start a run to inspect agent reasoning, tool data, and outputs.
-                </p>
-                <div id="inspect-details" class="inspect-details-wrapper"></div>
+              <div class="inspector-tabs">
+                <button class="tab-btn" data-tab="input">INPUT</button>
+                <button class="tab-btn active" data-tab="output">OUTPUT</button>
+                <button class="tab-btn" data-tab="tool">TOOL</button>
+                <button class="tab-btn" data-tab="metadata">METADATA</button>
+              </div>
+
+              <div class="inspector-body" id="inspector-body">
+                <p class="inspector-empty">Select an event from the timeline to inspect its parameters and outputs.</p>
+              </div>
+
+              <div class="inspector-footer" id="inspector-footer" style="display:none;">
+                <button class="footer-btn" id="btn-copy">📋 Copy</button>
+                <button class="footer-btn" id="btn-download">⬇ Download JSON</button>
+                <button class="footer-btn" id="btn-pretty-print">✨ Pretty Print</button>
               </div>
             </aside>
 
           </div>
-
-          <!-- 3. SQLite Database Stats Dock (Bottom Panel) -->
-          <footer class="database-stats-dock">
-            <div class="dock-header">
-              <h3><span class="dock-icon">📊</span> Relational Database Performance (SQLite & VSM)</h3>
-              <span class="dock-badge">Active Connection</span>
-            </div>
-            <div class="dock-grid">
-              <div class="dock-card">
-                <h4>System Sessions</h4>
-                <div class="dock-stat-row"><span>Total Sessions:</span> <b id="stat-sessions">0</b></div>
-                <div class="dock-stat-row"><span>Succeeded Runs:</span> <b id="stat-succeeded">0</b></div>
-                <div class="dock-stat-row"><span>Failed Runs:</span> <b id="stat-failed">0</b></div>
-                <div class="dock-stat-row"><span>Semantic Records:</span> <b id="stat-memories">0</b></div>
-              </div>
-              <div class="dock-card">
-                <h4>Tool Success Rates</h4>
-                <div id="stat-tools-list" class="stat-tools-list">
-                  <p class="empty-dock-text">No tools executed in this session.</p>
-                </div>
-              </div>
-            </div>
-          </footer>
         </div>
 
-        <!-- Tab Content: Agents -->
+        <!-- TAB: Agents -->
         <div id="tab-content-agents" class="tab-content-pane hidden">
           <div class="subpage-container">
-            <div class="subpage-header">
-              <h2>🤖 Specialized Agent Roles</h2>
-              <p>The platform assigns tasks to specialized roles with strict tool execution limits and capabilities.</p>
-            </div>
+            <div class="subpage-header"><h2>🤖 Agent Roles</h2></div>
             <div class="subpage-grid">
-              <div class="info-card">
-                <h3>🛡️ Coordinator</h3>
-                <p>Decomposes user tasks into plan steps. Schedules handoffs between roles and triggers rework loops if verification fails.</p>
-              </div>
-              <div class="info-card">
-                <h3>🔍 Researcher (Alice)</h3>
-                <p>Focuses on information retrieval. Utilizes <code>websearch</code> and <code>browser</code> tools. Restricted to read-only filesystem scopes.</p>
-              </div>
-              <div class="info-card">
-                <h3>💻 Programmer (Bob)</h3>
-                <p>Responsible for writing, updating, and executing code. Utilizes <code>filesystem</code>, <code>shell</code>, and <code>python</code> sandboxes.</p>
-              </div>
-              <div class="info-card">
-                <h3>✨ Reviewer (Charlie)</h3>
-                <p>Validates outcomes. Run checks on code changes, runs tests via shell scripts, and evaluates final results against the brief.</p>
-              </div>
+              <div class="info-card"><h3>🛡️ Coordinator</h3><p>Decomposes user tasks into plan steps. Schedules handoffs between roles and triggers rework loops if verification fails.</p></div>
+              <div class="info-card"><h3>🔍 Researcher (Alice)</h3><p>Focuses on information retrieval. Utilizes <code>websearch</code> and <code>browser</code> tools. Restricted to read-only filesystem scopes.</p></div>
+              <div class="info-card"><h3>💻 Programmer (Bob)</h3><p>Responsible for writing, updating, and executing code. Utilizes <code>filesystem</code>, <code>shell</code>, and <code>python</code> sandboxes.</p></div>
+              <div class="info-card"><h3>✨ Reviewer (Charlie)</h3><p>Validates outcomes, runs tests, and evaluates final results against the brief.</p></div>
             </div>
           </div>
         </div>
 
-        <!-- Tab Content: Tools -->
+        <!-- TAB: Tools -->
         <div id="tab-content-tools" class="tab-content-pane hidden">
           <div class="subpage-container">
-            <div class="subpage-header">
-              <h2>🛠️ Sandboxed Tool Registry</h2>
-              <p>Tools are executed inside restricted environments to prevent path traversals and unauthorized access.</p>
-            </div>
+            <div class="subpage-header"><h2>🛠️ Tool Registry</h2></div>
             <div class="subpage-grid">
-              <div class="info-card">
-                <h3>🌐 Web Search (Tavily)</h3>
-                <p>Retrieves high-quality pages from the live web. Requires <code>TAVILY_API_KEY</code>.</p>
-              </div>
-              <div class="info-card">
-                <h3>🦊 Browser (Playwright)</h3>
-                <p>Automates chromium instances, performs user interaction simulations (clicking, filling forms), and captures step screenshots.</p>
-              </div>
-              <div class="info-card">
-                <h3>📁 FileSystem Sandbox</h3>
-                <p>Grants read and write operations restricted strictly inside the local <code>sandbox/</code> directory.</p>
-              </div>
-              <div class="info-card">
-                <h3>🐍 Python Sandbox</h3>
-                <p>Evaluates mathematical operations and data processing scripts in an isolated subprocess.</p>
-              </div>
-              <div class="info-card">
-                <h3>🐚 Shell Executor</h3>
-                <p>Runs command line processes inside the project's sandboxed root folder.</p>
-              </div>
+              <div class="info-card"><h3>🌐 Web Search (Tavily)</h3><p>Retrieves high-quality pages from the live web. Requires <code>TAVILY_API_KEY</code>.</p></div>
+              <div class="info-card"><h3>🦊 Browser (Playwright)</h3><p>Automates chromium instances, performs user interaction simulations, and captures step screenshots.</p></div>
+              <div class="info-card"><h3>📁 FileSystem Sandbox</h3><p>Grants read/write restricted strictly inside the local <code>sandbox/</code> directory.</p></div>
+              <div class="info-card"><h3>🐍 Python Sandbox</h3><p>Evaluates scripts in an isolated subprocess.</p></div>
+              <div class="info-card"><h3>🐚 Shell Executor</h3><p>Runs commands inside the project's sandboxed root folder.</p></div>
             </div>
           </div>
         </div>
 
-        <!-- Tab Content: Memory -->
+        <!-- TAB: Memory -->
         <div id="tab-content-memory" class="tab-content-pane hidden">
           <div class="subpage-container">
-            <div class="subpage-header">
-              <h2>🧠 Hybrid Persistent Memory</h2>
-              <p>The platform implements two complementary memory architectures for ultimate durability and semantic recall.</p>
-            </div>
+            <div class="subpage-header"><h2>🧠 Memory Systems</h2></div>
             <div class="subpage-grid">
-              <div class="info-card">
-                <h3>📊 SQLite Relational Schema</h3>
-                <p>Stores structured run histories, agent step logs, tool invocations, durations, and outputs with full foreign key constraints and cascade delete operations.</p>
-              </div>
-              <div class="info-card">
-                <h3>🌐 Vector Space Model (VSM)</h3>
-                <p>A zero-dependency TF-IDF vector database. Indexes planned tasks and their outcomes. Performs cosine similarity queries during Coordinator planning to recall past matching sessions.</p>
-              </div>
+              <div class="info-card"><h3>📊 SQLite Relational</h3><p>Stores run histories, agent step logs, tool invocations with foreign key constraints and cascade deletes.</p></div>
+              <div class="info-card"><h3>🌐 Vector Space Model</h3><p>Zero-dependency TF-IDF vector database for cosine similarity queries during Coordinator planning.</p></div>
             </div>
           </div>
         </div>
 
-        <!-- Tab Content: Settings -->
+        <!-- TAB: Settings -->
         <div id="tab-content-settings" class="tab-content-pane hidden">
           <div class="subpage-container">
-            <div class="subpage-header">
-              <h2>⚙️ Platform & Provider Configurations</h2>
-              <p>Adjust environment credentials and select language model providers.</p>
-            </div>
-            <div class="info-card">
-              <h3>Active System Configuration</h3>
-              <div class="dock-stat-row" style="margin-top: 10px;"><span>LLM Provider:</span> <b id="settings-provider">gemini</b></div>
-              <div class="dock-stat-row"><span>Request Timeout:</span> <b id="settings-timeout">60000ms</b></div>
-              <div class="dock-stat-row"><span>Web Search API:</span> <b id="settings-search">Tavily Search active</b></div>
-              <div class="dock-stat-row"><span>Database Name:</span> <code>data/memory.db</code></div>
+            <div class="subpage-header"><h2>⚙️ Configuration</h2></div>
+            <div class="info-card"><h3>System</h3>
+              <div class="config-row"><span>Provider:</span><b>gemini</b></div>
+              <div class="config-row"><span>Timeout:</span><b>60000ms</b></div>
+              <div class="config-row"><span>Search API:</span><b>Tavily</b></div>
+              <div class="config-row"><span>Database:</span><code>data/memory.db</code></div>
             </div>
           </div>
         </div>
 
-      </section>
-    </main>
+      </div><!-- end .main-content -->
+    </div><!-- end .app-layout -->
 
-    <!-- Templates -->
-    <template id="event-template">
-      <button class="timeline-event-card">
-        <div class="card-glow"></div>
-        <div class="card-left">
-          <span class="event-icon"></span>
-          <span class="timeline-thread-line"></span>
-        </div>
-        <div class="card-body">
-          <div class="card-header-row">
-            <strong class="event-title"></strong>
-            <span class="event-time"></span>
+    <!-- ═══════════════════════ BOTTOM STATS DOCK ═══════════════════════ -->
+    <footer class="stats-dock">
+      <div class="dock-grid">
+        <!-- Run Status -->
+        <div class="dock-card live-status">
+          <span class="dock-card-label">Run Status</span>
+          <div class="dock-live-indicator">
+            <span class="status-dot dot-idle" id="status-dot"></span>
+            <span class="dock-live-text" id="status-text">Idle</span>
           </div>
-          <p class="event-detail"></p>
+          <span class="dock-card-sublabel" id="dock-status-sub">Waiting</span>
         </div>
-      </button>
-    </template>
 
-    <!-- Scripts -->
+        <!-- Total Runs -->
+        <div class="dock-card">
+          <span class="dock-card-label">Total Runs</span>
+          <span class="dock-card-value" id="stat-total-runs">0</span>
+        </div>
+
+        <!-- Succeeded -->
+        <div class="dock-card">
+          <span class="dock-card-label">Succeeded</span>
+          <span class="dock-card-value" id="stat-succeeded">0</span>
+          <span class="dock-card-delta success" id="stat-success-pct">0%</span>
+        </div>
+
+        <!-- Failed -->
+        <div class="dock-card">
+          <span class="dock-card-label">Failed</span>
+          <span class="dock-card-value" id="stat-failed">0</span>
+          <span class="dock-card-delta danger" id="stat-fail-pct">0%</span>
+        </div>
+
+        <!-- Tool Calls -->
+        <div class="dock-card tool-breakdown">
+          <span class="dock-card-label">Tool Calls</span>
+          <div class="dock-tool-row">
+            <div class="dock-tool-list" id="stat-tools-list">
+              <div class="dock-tool-item"><span>websearch</span><b>0</b></div>
+              <div class="dock-tool-item"><span>python</span><b>0</b></div>
+              <div class="dock-tool-item"><span>filesystem</span><b>0</b></div>
+              <div class="dock-tool-item"><span>browser</span><b>0</b></div>
+            </div>
+            <div class="donut-chart-wrap">
+              <svg class="donut-chart" viewBox="0 0 80 80">
+                <circle class="donut-bg" cx="40" cy="40" r="35" />
+                <circle class="donut-fill" id="donut-circle" cx="40" cy="40" r="35" />
+              </svg>
+              <span class="donut-label" id="donut-label">0%</span>
+              <span class="donut-sublabel">Success Rate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avg Response Time -->
+        <div class="dock-card">
+          <span class="dock-card-label">Avg Response Time</span>
+          <span class="dock-card-value" id="stat-avg-time">0s</span>
+          <span class="dock-card-delta success" id="stat-avg-delta"></span>
+        </div>
+
+        <!-- Tokens Used -->
+        <div class="dock-card">
+          <span class="dock-card-label">Tokens Used</span>
+          <span class="dock-card-value" id="stat-tokens">0</span>
+          <span class="dock-card-delta success" id="stat-tokens-delta"></span>
+        </div>
+      </div>
+
+      <!-- Hidden legacy IDs for stats compat -->
+      <span id="stat-sessions" style="display:none;">0</span>
+      <span id="stat-memories" style="display:none;">0</span>
+    </footer>
+
+    <!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
     <script src="three.min.js"></script>
     <script type="module" src="app.js"></script>
   </body>

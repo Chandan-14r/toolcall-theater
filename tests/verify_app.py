@@ -5,13 +5,17 @@ import os
 from playwright.sync_api import sync_playwright
 
 def run_verification():
-    # Start local server
-    print("Starting local HTTP server...")
+    # Start the Node server (serves public/ as static root + API endpoints)
+    print("Starting Node server...")
+    server_env = os.environ.copy()
+    server_env["PROVIDER"] = "dummy"
+    server_env["NODE_ENV"] = "test"
     server_process = subprocess.Popen(
-        ["python", "-m", "http.server", "8080"],
-        cwd="C:/Users/crs14/.gemini/antigravity/scratch/toolcall-theater"
+        ["node", "server/index.js"],
+        cwd="C:/Users/crs14/.gemini/antigravity/scratch/toolcall-theater",
+        env=server_env
     )
-    time.sleep(2.0)  # Wait for server to bind
+    time.sleep(2.5)  # Wait for server to bind
 
     try:
         with sync_playwright() as p:
@@ -25,62 +29,49 @@ def run_verification():
                 browser = p.chromium.launch(headless=True)
 
             page = browser.new_page()
-            
+            page.set_viewport_size({"width": 1280, "height": 800})
+
             console_logs = []
             page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
-            
-            network_requests = []
-            page.on("request", lambda req: network_requests.append(f"REQ: {req.method} {req.url}"))
-            page.on("response", lambda res: network_requests.append(f"RES: {res.status} {res.url}"))
 
             # Navigate
             print("Navigating to http://localhost:8080...")
             response = page.goto("http://localhost:8080")
             print(f"Page load response status: {response.status}")
-            
-            # Verify page loads
+            time.sleep(1.0)  # Let JS init + fetch scenarios
+
+            # Verify page loads with scenario title
             title = page.locator("#scenario-title").text_content()
             print(f"Scenario title on load: '{title}'")
-            
+            assert title and len(title) > 0, "Scenario title should be populated"
+
             # Scenario switching
             print("Clicking Scenario 2 button...")
             page.locator("button.scenario:has-text('Recover a failed export')").click()
             time.sleep(0.5)
             title2 = page.locator("#scenario-title").text_content()
             print(f"Scenario title after switch: '{title2}'")
-            
+            assert title2 != title, "Scenario title should change after switching"
+
             # Switch back to Scenario 1
             print("Switching back to Scenario 1...")
             page.locator("button.scenario:has-text('Vendor brief with sources')").click()
             time.sleep(0.5)
-            
-            # Click Step
-            print("Clicking 'Step'...")
-            page.locator("#step").click()
-            time.sleep(0.5)
-            trace_count = page.locator(".event").count()
-            print(f"Trace events visible after 1 step: {trace_count}")
-            
-            # Click Play
+
+            # Click Play (starts a live run via SSE)
             print("Clicking 'Play'...")
             page.locator("#play").click()
-            
-            # Wait for approval gate to appear (up to 5s)
-            print("Waiting for approval gate...")
-            approval_gate = page.locator(".approval-gate")
-            approval_gate.wait_for(timeout=5000)
+
+            # Wait for events to appear in timeline (dummy provider is fast)
+            print("Waiting for timeline events...")
+            time.sleep(3.0)
+
+            trace_count = page.locator(".event").count()
+            print(f"Trace events visible: {trace_count}")
+
             status_text = page.locator("#status-text").text_content()
-            print(f"Status after reaching checkpoint: '{status_text}'")
-            
-            # Click Approve action
-            print("Clicking 'Approve action'...")
-            page.locator(".approval-gate .approve").click()
-            time.sleep(0.5)
-            
-            # Verify status changes
-            status_text2 = page.locator("#status-text").text_content()
-            print(f"Status after approval: '{status_text2}'")
-            
+            print(f"Status after run: '{status_text}'")
+
             # Click Restart
             print("Clicking 'Restart'...")
             page.locator("#restart").click()
@@ -89,7 +80,8 @@ def run_verification():
             print(f"Status after restart: '{status_text3}'")
             trace_count_restart = page.locator(".event").count()
             print(f"Trace events visible after restart: {trace_count_restart}")
-            
+            assert trace_count_restart == 0, "Timeline should be empty after restart"
+
             # Click Export
             print("Clicking 'Export'...")
             with page.expect_download() as download_info:
@@ -98,22 +90,24 @@ def run_verification():
             print(f"Download triggered: {download.suggested_filename}")
             download_path = os.path.join("C:/Users/crs14/.gemini/antigravity/scratch/toolcall-theater", download.suggested_filename)
             download.save_as(download_path)
-            
+
             with open(download_path, "r") as f:
                 export_content = json.load(f)
                 print(f"Exported JSON keys: {list(export_content.keys())}")
-                
+
+            # Capture screenshot
+            screenshot_path = "C:/Users/crs14/.gemini/antigravity/brain/f060ee5d-0c14-49dd-8f31-1c70954a6250/demo_approval.png"
+            page.screenshot(path=screenshot_path)
+            print(f"Screenshot captured at {screenshot_path}")
+
             print("\n--- Console Logs ---")
             if not console_logs:
                 print("No console logs captured.")
             for log in console_logs:
                 print(log)
-                
-            print("\n--- Network Requests ---")
-            for req in network_requests:
-                print(req)
-                
+
             browser.close()
+            print("\nAll verify_app checks passed!")
 
     finally:
         server_process.terminate()
